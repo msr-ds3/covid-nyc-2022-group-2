@@ -5,8 +5,9 @@ positive for COVID and how that affected change in mobility in that subgroup. It
 their documentation. We were able to mostly replicate their results albiet with slight variability. 
 
 We managed to:
-- Replot their map plots 
-- Reproduce the R^2 regression numbers within a decent margin of error
+- Replot their map plots of different sub-populations
+- Reproduce the R^2 regression Tables within a decent margin of error
+
 
 
 

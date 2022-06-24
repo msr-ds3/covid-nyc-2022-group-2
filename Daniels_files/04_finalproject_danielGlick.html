@@ -815,8 +815,8 @@ summary(old_model)$r.squared</code></pre>
 
 april1_old &lt;- april1_old %&gt;% add_predictions(old_model)</code></pre>
 </div>
-<div id="recreate-graph-one-with-just-the-top-four" class="section level2">
-<h2>Recreate graph one with just the top four</h2>
+<div id="recreate-table-one-with-just-the-top-four" class="section level2">
+<h2>Recreate Table one with just the top four</h2>
 <pre class="r"><code>## top 4 model
 april1_top4 &lt;- list(prop_fourbyzip, uninsured_18to65_byzip, prop_of_white,income_byzip, covid_data_april1st) %&gt;%  reduce(inner_join, by = &quot;GEOID&quot;) %&gt;% mutate(prop_pos = Positive / Total) %&gt;% select(GEOID, prop_fourplus, prop_uninsured, prop_white, median_income, prop_pos, geometry)
 #head(april1_top4)
@@ -932,8 +932,8 @@ mobility_model</code></pre>
 summary(mobility_model)$r.squared</code></pre>
 <pre><code>## [1] 0.0522554</code></pre>
 </div>
-<div id="reproduce-results-from-graph-2" class="section level2">
-<h2>reproduce results from graph 2</h2>
+<div id="reproduce-results-from-table-2" class="section level2">
+<h2>reproduce results from Table 2</h2>
 <pre class="r"><code>graph2_with_mobility &lt;- list(prop_old_people, prop_public_transport, income_byzip, prop_of_white, uninsured_18to65_byzip, prop_fourbyzip, march23_mobility, covid_data_april1st) %&gt;%  reduce(inner_join, by = &quot;GEOID&quot;) %&gt;% mutate(prop_pos = Positive / Total) %&gt;% select(GEOID, prop_old, prop_bus, median_income, prop_white, prop_uninsured, prop_fourplus, change_in_mobility, prop_pos)
 #head(graph2_with_mobility)
 

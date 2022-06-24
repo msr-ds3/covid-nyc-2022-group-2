@@ -230,7 +230,7 @@ april1_old <- april1_old %>% add_predictions(old_model)
 
 ```
 
-## Recreate graph one with just the top four
+## Recreate Table one with just the top four
 ```{r}
 ## top 4 model
 april1_top4 <- list(prop_fourbyzip, uninsured_18to65_byzip, prop_of_white,income_byzip, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_fourplus, prop_uninsured, prop_white, median_income, prop_pos, geometry)
@@ -306,7 +306,7 @@ summary(mobility_model)$r.squared
 
 ```
 
-##reproduce results from graph 2
+##reproduce results from Table 2
 ```{r graph2}
 
 graph2_with_mobility <- list(prop_old_people, prop_public_transport, income_byzip, prop_of_white, uninsured_18to65_byzip, prop_fourbyzip, march23_mobility, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_old, prop_bus, median_income, prop_white, prop_uninsured, prop_fourplus, change_in_mobility, prop_pos)
