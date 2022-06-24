@@ -1,0 +1,336 @@
+---
+title: "Group 2 Covid NYC"
+author: "Daniel Glick"
+date: "6/21/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##Import libraries
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(tigris)
+#install.packages("sf")
+library(sf)
+library(modelr)
+options(tigris_use_cache=FALSE)
+
+
+
+#census_api_key('5b57bbbf7a40056c2e85579c26db150add4a4e17', install = TRUE)
+#Your API key has been stored in your .Renviron and can be accessed by Sys.getenv("CENSUS_API_KEY"). To use now, restart R or run `readRenviron("~/.Renviron")`
+readRenviron("~/.Renviron")
+
+desired_zipcodes <- read_csv("zipcodes_nyc.csv", col_names = TRUE,  cols(ZipCode = col_character())) %>% rename(GEOID=ZipCode)
+#view(desired_zipcodes)
+
+
+acs_var_2016 <- load_variables(2016, "acs5", cache = TRUE)
+#view(acs_var_2016)
+
+ACS_data <- get_acs(geography = "zcta", variables = c(total_pop = 'B01003_001', uninsured_19to34 = 'B27010_033', uninsured_35to64 = 'B27010_050', med_income = 'B19013_001', white = 'B02001_002', total_house = 'B11016_001', house_4_fam = 'B11016_005', house_4_nonfam = 'B11016_013', house_5_fam ='B11016_006', house_5_nonfam = 'B11016_014', house_6_fam = 'B11016_007', house_6_nonfam = 'B11016_015', house_7_fam = 'B11016_008', house_7_nonfam = 'B11016_016', public = 'B08301_001', bus = 'B08301_011', age_65to66_male = 'B01001_020', age_67to69_male = 'B01001_021', age_70to74_male = 'B01001_022', age_75to79_male = 'B01001_023', age_80to84_male = 'B01001_024', age_85plus_male = 'B01001_025', age_65to66_female = 'B01001_044', age_67to69_female = 'B01001_045', age_70to74_female = 'B01001_046', age_75to79_female = 'B01001_047', age_80to84_female = 'B01001_048', age_85plus_female = 'B01001_049'), state = 'NY', year = 2016, geometry = TRUE)
+
+
+#readRDS("ACS_data_dg.rds")
+#view(ACS_data)
+head(ACS_data, 45)
+
+
+ACS_data_cleaned <- inner_join(desired_zipcodes, ACS_data, on = "GEOID")
+
+
+#head(ACS_data_cleaned, 20)
+#view(ACS_data_cleaned)
+```
+
+
+##Combine all the rows that need combining and divide by total population to get proportions. 
+```{r combine and calculate propportions}
+
+#Total population by zip code
+total_byzip <- ACS_data_cleaned %>% filter(variable == "total_pop") %>% rename(total_pop = estimate)
+#head(total_byzip)
+
+#Total number taking public transport
+public_transport_count <- ACS_data_cleaned %>% filter(grepl("public", variable)) %>% group_by(GEOID) %>%  summarize(take_public = sum(estimate))
+#head(public_transport_count)
+
+#total number of people in all households
+all_house_sizes <- ACS_data_cleaned %>% filter(grepl("total_house", variable)) %>% group_by(GEOID) %>%  summarize(all_house = sum(estimate))
+#head(all_house_sizes)
+
+#proportion 18-64 uninsured
+uninsured <- ACS_data_cleaned %>% filter(grepl("^uninsured*", variable)) %>% group_by(GEOID) %>%  summarize(eighteen_to65 = sum(estimate))
+#head(uninsured)
+
+uninsured_18to65_byzip <- left_join(uninsured, total_byzip, on = "GEOID") %>% mutate(prop_uninsured = eighteen_to65 / total_pop) %>% select(GEOID, eighteen_to65, total_pop, prop_uninsured, geometry)
+#head(uninsured_18to65_byzip)
+
+
+#Median Income
+income_byzip <- ACS_data_cleaned %>% filter(grepl("med_income", variable)) %>% group_by(GEOID)%>%  summarize(median_income = sum(estimate))
+
+  
+#proportion of pop that are white
+vanilla <- ACS_data_cleaned %>% filter(grepl("white", variable)) %>% group_by(GEOID)%>%  summarize(ident_as_white = sum(estimate))
+
+prop_of_white <- left_join(vanilla, total_byzip, on = "GEOID") %>% mutate(prop_white = ident_as_white / total_pop) %>% select(GEOID, ident_as_white, total_pop, prop_white, geometry)
+#head(prop_of_white)
+
+
+#proportion homes with four or more in the house
+house_fourplus <- ACS_data_cleaned %>% filter(grepl("^house_*", variable)) %>% group_by(GEOID) %>% summarize(four_or_more = sum(estimate))
+#head(house_fourplus)
+
+prop_fourbyzip <- left_join(house_fourplus, total_byzip, on = "GEOID")
+prop_fourbyzip <- left_join(prop_fourbyzip, all_house_sizes, on = "GEOID") %>% mutate(prop_fourplus = four_or_more / all_house) %>% select(GEOID, four_or_more, all_house, prop_fourplus, geometry)
+#head(prop_fourbyzip)
+
+
+#proportion using public transport that used bus
+amount_on_bus <- ACS_data_cleaned %>% filter(grepl("bus", variable)) %>% group_by(GEOID)  %>%  summarize(take_bus = sum(estimate))
+#view(amount_on_bus)
+
+prop_public_transport <- left_join(amount_on_bus, total_byzip, on = "GEOID")
+prop_public_transport <- left_join(prop_public_transport, public_transport_count, on = "GEOID") %>% mutate(prop_bus = take_bus / take_public) %>% select(GEOID, take_bus, take_public, prop_bus, geometry)
+#head(prop_public_transport)
+
+  
+#proportion of people aged 65+
+walkwithcane <- ACS_data_cleaned %>% filter(grepl("^age*", variable)) %>% group_by(GEOID)%>%  summarize(old_as_hell = sum(estimate))
+
+prop_old_people <- left_join(walkwithcane, total_byzip, on = "GEOID") %>% mutate(prop_old = old_as_hell / total_pop) %>% select(GEOID, old_as_hell, total_pop, prop_old, geometry)
+#head(prop_old_people)  
+
+
+#Combine all into one data frame
+master_data <- list(prop_old_people, prop_public_transport, prop_fourbyzip, prop_of_white, income_byzip, uninsured_18to65_byzip) %>% reduce(inner_join, by = "GEOID") %>% select(GEOID, prop_old, prop_bus, prop_fourplus, prop_white, median_income, prop_uninsured, geometry)
+head(master_data)
+```
+
+
+##Medians 
+```{r compute medians}
+
+median(master_data$prop_uninsured, na.rm=TRUE)
+median(master_data$median_income, na.rm=TRUE)
+median(master_data$prop_fourplus, na.rm=TRUE)
+median(master_data$prop_white, na.rm=TRUE)
+median(master_data$prop_bus, na.rm=TRUE)
+median(master_data$prop_old, na.rm=TRUE)
+
+```
+
+
+##Plot Data
+```{r plot map data}
+
+ggplot(data = master_data, aes(fill = prop_uninsured)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "YlOrRd", direction = 1) + labs(title = "Proportion of 18-64 year olds who are uninsured") + theme_void() + theme(legend.position="bottom")
+
+ggplot(data = master_data, aes(fill = median_income)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "YlGn", direction = 1) + labs(title = "Median Income") + theme_void() + theme(legend.position="bottom")
+
+ggplot(data = master_data, aes(fill = prop_white)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "Purples", direction = 1) + labs(title = "Proportion self-identifying as White") + theme_void() + theme(legend.position="bottom")
+
+ggplot(data = master_data, aes(fill = prop_fourplus)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "YlOrRd", direction = 1) + labs(title = "Proportion in households of 4 or more") + theme_void() + theme(legend.position="bottom")
+
+ggplot(data = master_data, aes(fill = prop_bus)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "YlOrRd", direction = 1) + labs(title = "Proportion of population that commutes by bus") + theme_void() + theme(legend.position="bottom")
+
+ggplot(data = master_data, aes(fill = prop_old)) + geom_sf(aes(geometry=geometry)) + scale_fill_distiller(palette = "YlOrRd", direction = 1) + labs(title = "Proportion of population 65+ years of age") + theme_void() + theme(legend.position="bottom")
+# + rescale(master_data$prop_old, to = c(0.050, 0.20 ))
+
+save(master_data, file = 'master_data.RData')
+#load('master_data.RData') 
+
+```
+
+
+##Read in the Covid data
+```{r read in covid data and display}
+
+covid_data_april1st <- read_csv("tests-by-zcta_april1st.csv") %>% mutate (GEOID = as.character(MODZCTA)) 
+covid_data_may1st <- read_csv("tests-by-zcta_may1st.csv") %>% mutate (GEOID = as.character(MODZCTA))
+#head(covid_data_april1st)
+#head(covid_data_may1st)
+
+```
+
+
+##Do R^2 regressions on all the metrics above
+```{r combine and model}
+
+#four plus model
+april1_fourplus <- inner_join(prop_fourbyzip, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+head(april1_fourplus)
+
+fourplus_model <-  lm(prop_pos ~ prop_fourplus, april1_fourplus)
+summary(fourplus_model)$r.squared
+#fourplus_model
+
+april1_fourplus <- april1_fourplus %>% add_predictions(fourplus_model)
+
+
+##18-64 uninsured model
+april1_uninsured <- inner_join(uninsured_18to65_byzip, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+#head(april1_uninsured)
+
+uninsured_model <-  lm(prop_pos ~ prop_uninsured, april1_uninsured)
+summary(uninsured_model)$r.squared
+#uninsured_model
+
+april1_uninsured <- april1_uninsured %>% add_predictions(uninsured_model)
+
+
+##white model
+april1_white <- inner_join(prop_of_white, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+#head(april1_white)
+
+white_model <-  lm(prop_pos ~ prop_white, april1_white)
+summary(white_model)$r.squared
+#white_model
+
+april1_white <- april1_white %>% add_predictions(white_model)
+
+
+##median income model
+april1_median <- inner_join(income_byzip, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+
+median_model <-  lm(prop_pos ~ median_income, april1_median)
+summary(median_model)$r.squared
+#median_model
+
+april1_median <- april1_median %>% add_predictions(median_model)
+
+
+## using bus model
+april1_bus <- inner_join(prop_public_transport, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+#head(april1_bus)
+
+bus_model <-  lm(prop_pos ~ prop_bus, april1_bus)
+summary(bus_model)$r.squared
+bus_model
+
+april1_bus <- april1_bus %>% add_predictions(bus_model)
+
+
+## older than 65 model
+april1_old <- inner_join(prop_old_people, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
+head(april1_old)
+
+old_model <-  lm(prop_pos ~ prop_old, april1_old)
+summary(old_model)$r.squared
+#old_model
+
+april1_old <- april1_old %>% add_predictions(old_model)
+
+
+## top 4 model
+april1_top4 <- list(prop_fourbyzip, uninsured_18to65_byzip, prop_of_white,income_byzip, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_fourplus, prop_uninsured, prop_white, median_income, prop_pos, geometry)
+head(april1_top4)
+
+top4_model <-  lm(prop_pos ~ prop_fourplus + prop_uninsured + prop_white +  median_income, april1_top4)
+summary(top4_model)#$r.squared
+top4_model
+
+april1_top4 <- april1_top4 %>% add_predictions(top4_model)
+april1_top4
+```
+
+
+##load in safegraph mobility data and join to specify only nyc zips
+```{r load safegraph mobility}
+
+load('/data/safegraph/safegraph.Rdata')
+safegraph_df <- safegraph %>% mutate(GEOID = as.character(postal_code)) 
+
+
+safegraph_byzip <- inner_join(desired_zipcodes, safegraph_df, on = "GEOID")
+view(safegraph_byzip)
+
+```
+
+## Calculate Change in Mobility, plot Violin graph with interquartile range and median of mobility 
+```{r calculate all the median and mobility}
+## calculate baseline:(using Feb 2020) avg_visits_per_day per zipcode = v_hat, v_z is median of avg_visits_per_day for each zip
+v_z_feb2020_median_ofavgs_byzip <- safegraph_byzip %>% 
+  filter(grepl("^2020-02-", date)) %>% 
+  group_by(GEOID) %>% 
+  summarize(v_z = median(avg_visits_per_day))
+
+view(v_z_feb2020_median_ofavgs_byzip)
+
+
+## mobility calculation: join with march and april data, add mobility 
+mobility_calc_marchandapril <- left_join(safegraph_byzip, v_z_feb2020_median_ofavgs_byzip, on = "GEOID") %>% filter(grepl("^2020-03-|^2020-04-" , date)) %>% mutate(change_in_mobility = (avg_visits_per_day - v_z)/v_z) %>% select (GEOID, date, avg_visits_per_day, median_visits_per_day, v_z, change_in_mobility)
+
+view(mobility_calc_marchandapril)
+
+
+## calculatemedian and quartiles of mobility
+ median_of_mobility <- mobility_calc_marchandapril %>% group_by(date) %>%
+  mutate(upper = quantile(change_in_mobility, na.rm = TRUE, probs = c(0.25)),
+         lower = quantile(change_in_mobility, na.rm = TRUE, probs = c(0.75)),
+         middle = median(change_in_mobility, na.rm = TRUE))
+
+#view(median_of_mobility)
+
+
+## plot data on geom_violin 
+mobility_calc_marchandapril %>% 
+  filter(change_in_mobility < 1 ) %>% 
+  ggplot(aes(y = change_in_mobility, x = as.factor(date))) + geom_violin( color = "orange") + labs(x = "Day", y = "Mobility")+ theme(legend.position = "none") + geom_pointrange(data = median_of_mobility, mapping = aes(ymin = lower, ymax = upper, y = middle),color = "red", na.rm = TRUE ) + coord_flip()
+
+```
+
+
+## r^2 regression of mobility
+```{r}
+
+march23_mobility <- mobility_calc_marchandapril %>% filter(date == "2020-03-23") 
+april_mobility <- inner_join(march23_mobility, covid_data_april1st, by = "GEOID") %>% mutate(prop_pos = Positive / Total)
+
+mobility_model <- lm(prop_pos ~  change_in_mobility, april_mobility)
+mobility_model
+
+
+april_mobility <- april_mobility %>% add_predictions(mobility_model)
+summary(mobility_model)$r.squared
+head
+head(april_mobility)
+
+```
+
+##reproduce results from graph 2
+```{r graph2}
+
+graph2_with_mobility <- list(prop_old_people, prop_public_transport, income_byzip, prop_of_white, uninsured_18to65_byzip, prop_fourbyzip, march23_mobility, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_old, prop_bus, median_income, prop_white, prop_uninsured, prop_fourplus, change_in_mobility, prop_pos)
+#head(graph2_with_mobility)
+
+graph2_model_with_mobility <- lm(prop_pos ~ prop_old + prop_bus + median_income + prop_white + prop_uninsured + prop_fourplus + change_in_mobility, graph2_with_mobility)
+summary(graph2_model_with_mobility)$r.squared
+graph2_model_with_mobility
+
+graph2_with_mobility <- graph2_with_mobility %>% add_predictions(graph2_model_with_mobility)
+#graph2_with_mobility
+
+graph2_without_mobility <- list(prop_old_people, prop_public_transport, income_byzip, prop_of_white, uninsured_18to65_byzip, prop_fourbyzip, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_old, prop_bus, median_income, prop_white, prop_uninsured, prop_fourplus, prop_pos)
+#head(graph2_without_mobility)
+
+graph2_model_without_mobility <- lm(prop_pos ~ prop_old + prop_bus + median_income + prop_white + prop_uninsured + prop_fourplus, graph2_with_mobility)
+summary(graph2_model_without_mobility)$r.squared
+graph2_model_without_mobility
+
+graph2_without_mobility <- graph2_without_mobility %>% add_predictions(graph2_model_without_mobility)
+#graph2_without_mobility
+
+
+##error in the number i get for median_income and mobility, + my r^2 changes when i include/exclude mobility but not the rest of the estimates?
+
+
+```
+
