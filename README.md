@@ -15,4 +15,9 @@ This week covers replications and extensions of [this article](https://onlinelib
 
 4. From here think about extensions to the article. Each group will probably come up with different questions to ask of the data. Write down the questions your group is interested in along with a plan for how you can tackle them with the data you have. 
 
-6. Write one Rmarkdown notebook file that contains all of your results, including the replications and your extension. Commit the source code and rendered notebook to your group's Github repository (links for that coming soon), with a README that explains what each file does.
+5. Write one Rmarkdown notebook file that contains all of your results, including the replications and your extension. Commit the source code and rendered notebook to your group's Github repository (links for that coming soon), with a README that explains what each file does.
+
+# Rendered Notebook and HTML
+
+1. The rendered file for Figure1 and Table1 can be found [here](https://raw.githack.com/msr-ds3/covid-nyc-2022-group-2/main/02_Figure1_Table1_Group2.html)
+2. The whole rendered document can be found [here]()
