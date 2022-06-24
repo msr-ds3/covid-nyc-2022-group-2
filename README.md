@@ -19,5 +19,5 @@ This week covers replications and extensions of [this article](https://onlinelib
 
 # Rendered Notebook and HTML
 
-1. The rendered file for Figure1 and Table1 can be found [here]()
+1. The rendered file for Figure1 and Table1 can be found [here](https://raw.githack.com/msr-ds3/covid-nyc-2022-group-2/main/02_Figure1_Table1_Group2.html)
 2. The whole rendered document can be found [here]()
