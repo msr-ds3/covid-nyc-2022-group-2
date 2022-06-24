@@ -737,18 +737,9 @@ save(master_data, file = 'master_data.RData')
 <pre class="r"><code>#four plus model
 april1_fourplus &lt;- inner_join(prop_fourbyzip, covid_data_april1st, on = &quot;GEOID&quot;) %&gt;% mutate(prop_pos = Positive / Total)</code></pre>
 <pre><code>## Joining, by = &quot;GEOID&quot;</code></pre>
-<pre class="r"><code>head(april1_fourplus)</code></pre>
-<pre><code>## # A tibble: 6 × 9
-##   GEOID four_or_more all_house prop_fourplus                    geometry MODZCTA
-##   &lt;chr&gt;        &lt;dbl&gt;     &lt;dbl&gt;         &lt;dbl&gt;          &lt;MULTIPOLYGON [°]&gt;   &lt;dbl&gt;
-## 1 10001          812     11967        0.0679 (((-74.00828 40.75027, -74…   10001
-## 2 10002         4797     33327        0.144  (((-73.9975 40.71407, -73.…   10002
-## 3 10003         1339     27258        0.0491 (((-73.99697 40.73141, -73…   10003
-## 4 10004          170      1592        0.107  (((-73.99814 40.70152, -73…   10004
-## 5 10005          225      4295        0.0524 (((-74.01251 40.70677, -74…   10005
-## 6 10006          155      1776        0.0873 (((-74.0147 40.70978, -74.…   10006
-## # … with 3 more variables: Positive &lt;dbl&gt;, Total &lt;dbl&gt;, prop_pos &lt;dbl&gt;</code></pre>
-<pre class="r"><code>fourplus_model &lt;-  lm(prop_pos ~ prop_fourplus, april1_fourplus)
+<pre class="r"><code>#head(april1_fourplus)
+
+fourplus_model &lt;-  lm(prop_pos ~ prop_fourplus, april1_fourplus)
 summary(fourplus_model)$r.squared</code></pre>
 <pre><code>## [1] 0.380768</code></pre>
 <pre class="r"><code>#fourplus_model
@@ -815,39 +806,22 @@ summary(bus_model)$r.squared</code></pre>
 ## older than 65 model
 april1_old &lt;- inner_join(prop_old_people, covid_data_april1st, on = &quot;GEOID&quot;) %&gt;% mutate(prop_pos = Positive / Total)</code></pre>
 <pre><code>## Joining, by = &quot;GEOID&quot;</code></pre>
-<pre class="r"><code>head(april1_old)</code></pre>
-<pre><code>## # A tibble: 6 × 9
-##   GEOID old_as_hell total_pop prop_old                          geometry MODZCTA
-##   &lt;chr&gt;       &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;                &lt;MULTIPOLYGON [°]&gt;   &lt;dbl&gt;
-## 1 10001        2771     23332   0.119  (((-74.00828 40.75027, -74.00703…   10001
-## 2 10002       14356     78096   0.184  (((-73.9975 40.71407, -73.99606 …   10002
-## 3 10003        6164     56767   0.109  (((-73.99697 40.73141, -73.99362…   10003
-## 4 10004         164      3044   0.0539 (((-73.99814 40.70152, -73.99617…   10004
-## 5 10005         143      8710   0.0164 (((-74.01251 40.70677, -74.01125…   10005
-## 6 10006           0      3277   0      (((-74.0147 40.70978, -74.0136 4…   10006
-## # … with 3 more variables: Positive &lt;dbl&gt;, Total &lt;dbl&gt;, prop_pos &lt;dbl&gt;</code></pre>
-<pre class="r"><code>old_model &lt;-  lm(prop_pos ~ prop_old, april1_old)
+<pre class="r"><code>#head(april1_old)
+
+old_model &lt;-  lm(prop_pos ~ prop_old, april1_old)
 summary(old_model)$r.squared</code></pre>
 <pre><code>## [1] 0.02682795</code></pre>
 <pre class="r"><code>#old_model
 
-april1_old &lt;- april1_old %&gt;% add_predictions(old_model)
-
-
-## top 4 model
+april1_old &lt;- april1_old %&gt;% add_predictions(old_model)</code></pre>
+</div>
+<div id="recreate-graph-one-with-just-the-top-four" class="section level2">
+<h2>Recreate graph one with just the top four</h2>
+<pre class="r"><code>## top 4 model
 april1_top4 &lt;- list(prop_fourbyzip, uninsured_18to65_byzip, prop_of_white,income_byzip, covid_data_april1st) %&gt;%  reduce(inner_join, by = &quot;GEOID&quot;) %&gt;% mutate(prop_pos = Positive / Total) %&gt;% select(GEOID, prop_fourplus, prop_uninsured, prop_white, median_income, prop_pos, geometry)
-head(april1_top4)</code></pre>
-<pre><code>## # A tibble: 6 × 7
-##   GEOID prop_fourplus prop_uninsured prop_white median_income prop_pos
-##   &lt;chr&gt;         &lt;dbl&gt;          &lt;dbl&gt;      &lt;dbl&gt;         &lt;dbl&gt;    &lt;dbl&gt;
-## 1 10001        0.0679         0.0629      0.635         85168    0.426
-## 2 10002        0.144          0.0765      0.315         35594    0.461
-## 3 10003        0.0491         0.0494      0.775        100791    0.425
-## 4 10004        0.107          0.0624      0.723        123056    0.421
-## 5 10005        0.0524         0.0538      0.738        130116    0.309
-## 6 10006        0.0873         0.0488      0.660        125364    0.25 
-## # … with 1 more variable: geometry &lt;MULTIPOLYGON [°]&gt;</code></pre>
-<pre class="r"><code>top4_model &lt;-  lm(prop_pos ~ prop_fourplus + prop_uninsured + prop_white +  median_income, april1_top4)
+#head(april1_top4)
+
+top4_model &lt;-  lm(prop_pos ~ prop_fourplus + prop_uninsured + prop_white +  median_income, april1_top4)
 summary(top4_model)#$r.squared</code></pre>
 <pre><code>## 
 ## Call:
@@ -957,23 +931,6 @@ mobility_model</code></pre>
 <pre class="r"><code>april_mobility &lt;- april_mobility %&gt;% add_predictions(mobility_model)
 summary(mobility_model)$r.squared</code></pre>
 <pre><code>## [1] 0.0522554</code></pre>
-<pre class="r"><code>head</code></pre>
-<pre><code>## function (x, ...) 
-## UseMethod(&quot;head&quot;)
-## &lt;bytecode: 0x31e2d30&gt;
-## &lt;environment: namespace:utils&gt;</code></pre>
-<pre class="r"><code>head(april_mobility)</code></pre>
-<pre><code>## # A tibble: 6 × 11
-##   GEOID date       avg_visits_per_day median_visits_per_…   v_z change_in_mobil…
-##   &lt;chr&gt; &lt;date&gt;                  &lt;dbl&gt;               &lt;dbl&gt; &lt;dbl&gt;            &lt;dbl&gt;
-## 1 10453 2020-03-23               27.3                   7  39.2           -0.303
-## 2 10457 2020-03-23               57.8                  12  50.9            0.137
-## 3 10460 2020-03-23               24.7                  17  37.1           -0.332
-## 4 10458 2020-03-23               42.0                   6  82             -0.488
-## 5 10467 2020-03-23               15.6                   5  27.8           -0.439
-## 6 10468 2020-03-23                7                     5  25.6           -0.726
-## # … with 5 more variables: MODZCTA &lt;dbl&gt;, Positive &lt;dbl&gt;, Total &lt;dbl&gt;,
-## #   prop_pos &lt;dbl&gt;, pred &lt;dbl&gt;</code></pre>
 </div>
 <div id="reproduce-results-from-graph-2" class="section level2">
 <h2>reproduce results from graph 2</h2>
@@ -1019,7 +976,7 @@ summary(graph2_model_without_mobility)$r.squared</code></pre>
 #graph2_without_mobility
 
 
-##error in the number i get for median_income and mobility, + my r^2 changes when i include/exclude mobility but not the rest of the estimates?</code></pre>
+## error in the number i get for median_income and mobility, + my r^2 changes when i include/exclude mobility but not the rest of the estimates?</code></pre>
 </div>
 
 

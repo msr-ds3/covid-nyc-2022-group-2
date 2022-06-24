@@ -3,8 +3,8 @@ title: "Group 2 Covid NYC"
 author: "Daniel Glick"
 date: "6/21/2022"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -166,7 +166,7 @@ covid_data_may1st <- read_csv("tests-by-zcta_may1st.csv") %>% mutate (GEOID = as
 
 #four plus model
 april1_fourplus <- inner_join(prop_fourbyzip, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
-head(april1_fourplus)
+#head(april1_fourplus)
 
 fourplus_model <-  lm(prop_pos ~ prop_fourplus, april1_fourplus)
 summary(fourplus_model)$r.squared
@@ -220,7 +220,7 @@ april1_bus <- april1_bus %>% add_predictions(bus_model)
 
 ## older than 65 model
 april1_old <- inner_join(prop_old_people, covid_data_april1st, on = "GEOID") %>% mutate(prop_pos = Positive / Total)
-head(april1_old)
+#head(april1_old)
 
 old_model <-  lm(prop_pos ~ prop_old, april1_old)
 summary(old_model)$r.squared
@@ -228,10 +228,13 @@ summary(old_model)$r.squared
 
 april1_old <- april1_old %>% add_predictions(old_model)
 
+```
 
+## Recreate graph one with just the top four
+```{r}
 ## top 4 model
 april1_top4 <- list(prop_fourbyzip, uninsured_18to65_byzip, prop_of_white,income_byzip, covid_data_april1st) %>%  reduce(inner_join, by = "GEOID") %>% mutate(prop_pos = Positive / Total) %>% select(GEOID, prop_fourplus, prop_uninsured, prop_white, median_income, prop_pos, geometry)
-head(april1_top4)
+#head(april1_top4)
 
 top4_model <-  lm(prop_pos ~ prop_fourplus + prop_uninsured + prop_white +  median_income, april1_top4)
 summary(top4_model)#$r.squared
@@ -300,8 +303,6 @@ mobility_model
 
 april_mobility <- april_mobility %>% add_predictions(mobility_model)
 summary(mobility_model)$r.squared
-head
-head(april_mobility)
 
 ```
 
@@ -329,7 +330,7 @@ graph2_without_mobility <- graph2_without_mobility %>% add_predictions(graph2_mo
 #graph2_without_mobility
 
 
-##error in the number i get for median_income and mobility, + my r^2 changes when i include/exclude mobility but not the rest of the estimates?
+## error in the number i get for median_income and mobility, + my r^2 changes when i include/exclude mobility but not the rest of the estimates?
 
 
 ```
